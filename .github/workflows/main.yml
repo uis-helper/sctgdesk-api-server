@@ -14,18 +14,3 @@ permissions:
 jobs:
   Build_Docker:
     uses: ./.github/workflows/docker-build.yaml
-
-  Build_Linux_binaries:
-    uses: ./.github/workflows/ubuntu.yml
-    secrets: inherit
-    
-  Build_MacOS_binaries:
-    uses: ./.github/workflows/macos-build.yml
-    secrets: inherit
-  
-  Build_Windows_binaries:
-    uses: ./.github/workflows/windows.yml
-    secrets: inherit
-  
-  Build_openapi:
-    uses: ./.github/workflows/build.yaml

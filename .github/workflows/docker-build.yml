@@ -18,8 +18,6 @@ jobs:
     env:
       IMAGE_NAME: sctgdesk-api-server
       REGISTRY: ghcr.io
-      # Используем название репозитория для имени образа
-      IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
 
     steps:
     - name: Checkout code
@@ -39,7 +37,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.IMAGE }}
+        images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
         tags: |
           type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
           type=semver,pattern={{version}}
@@ -90,5 +88,5 @@ jobs:
 
     - name: Output image info
       run: |
-        echo "Image pushed to: ${{ env.IMAGE }}"
+        echo "Image pushed to: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
         echo "Tags: ${{ steps.meta.outputs.tags }}"
