@@ -12,6 +12,9 @@ permissions:
   attestations: write
   
 jobs:
+  Build_Docker:
+    uses: ./.github/workflows/docker-build.yaml
+
   Build_Linux_binaries:
     uses: ./.github/workflows/ubuntu.yml
     secrets: inherit

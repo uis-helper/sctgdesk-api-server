@@ -1,0 +1,94 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_call:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-22.04
+    env:
+      IMAGE_NAME: sctgdesk-api-server
+      REGISTRY: ghcr.io
+      # Используем название репозитория для имени образа
+      IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.IMAGE }}
+        tags: |
+          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha
+
+    - name: Set up environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y pkg-config libssl-dev libsqlite3-dev musl-dev musl-tools
+
+    - name: Install Rust toolchain
+      uses: crusty-pie/toolchain@main
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        targets: x86_64-unknown-linux-musl
+
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Build webconsole
+      run: |
+        cd webconsole
+        npm ci
+        npm run build
+
+    - name: Build binary
+      run: |
+        DATABASE_URL=sqlite://$(pwd)/db_v2.sqlite3 cargo build --target=x86_64-unknown-linux-musl --release
+        strip target/x86_64-unknown-linux-musl/release/sctgdesk-api-server
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: Dockerfile
+        platforms: linux/amd64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          BUILD_DATE=${{ steps.meta.outputs.date }}
+          VCS_REF=${{ github.sha }}
+
+    - name: Output image info
+      run: |
+        echo "Image pushed to: ${{ env.IMAGE }}"
+        echo "Tags: ${{ steps.meta.outputs.tags }}"
